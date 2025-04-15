@@ -63,13 +63,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
 let scene, camera, renderer, mesh, animar = false, resultadoMostrado = 0;
+let velocidad = 0.015;
 
 function crearGeometria(caras) {
   switch (caras) {
     case 4: return new THREE.TetrahedronGeometry(1);
     case 6: return new THREE.BoxGeometry(1, 1, 1);
     case 8: return new THREE.OctahedronGeometry(1);
-    case 10: return new THREE.Geometry(); // Será creado manualmente más abajo
+    case 10: return crearDecaedro();
     case 12: return new THREE.DodecahedronGeometry(1);
     case 20: return new THREE.IcosahedronGeometry(1);
     default: return new THREE.BoxGeometry(1, 1, 1);
@@ -81,9 +82,9 @@ function crearTexturaNumero(numero) {
   canvas.width = 256;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#f5e9d4';
+  ctx.fillStyle = '#444'; // Contraste fuerte
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#222';
+  ctx.fillStyle = '#fff';
   ctx.font = 'bold 160px Georgia';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -93,8 +94,7 @@ function crearTexturaNumero(numero) {
 
 function crearDecaedro() {
   const geom = new THREE.IcosahedronGeometry(1, 0);
-  const scale = new THREE.Vector3(1, 0.65, 1);
-  geom.scale(scale.x, scale.y, scale.z);
+  geom.scale(1, 0.65, 1);
   return geom;
 }
 
@@ -107,8 +107,8 @@ function crearDado(caras) {
   renderer.setSize(400, 400);
   contenedor.appendChild(renderer.domElement);
 
-  const geometry = caras === 10 ? crearDecaedro() : crearGeometria(caras);
-  const textura = new THREE.TextureLoader().load('textura_marmol_oscura.jpg');
+  const geometry = crearGeometria(caras);
+  const textura = new THREE.TextureLoader().load('textura_dado_contraste.jpg');
   const material = new THREE.MeshStandardMaterial({ map: textura });
 
   mesh = new THREE.Mesh(geometry, material);
@@ -128,8 +128,8 @@ function crearDado(caras) {
 function animate() {
   requestAnimationFrame(animate);
   if (animar && mesh) {
-    mesh.rotation.x += 0.05;
-    mesh.rotation.y += 0.05;
+    mesh.rotation.x += velocidad;
+    mesh.rotation.y += velocidad;
   }
   renderer.render(scene, camera);
 }
