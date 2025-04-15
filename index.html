@@ -28,6 +28,18 @@
       margin: 20px auto;
       display: none;
       background-color: #f5e9d4;
+      position: relative;
+    }
+    #numeroOverlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      font-family: Georgia, serif;
+      color: white;
+      text-shadow: 2px 2px 4px #000;
+      display: none;
     }
     select, input, button {
       font-size: 18px;
@@ -56,14 +68,18 @@
   <label for="cantidad">Cantidad de dados:</label>
   <input type="number" id="cantidad" value="1" min="1" max="50"><br />
   <button onclick="lanzar()">Lanzar</button>
-  <div id="dado3d"></div>
+  <div id="dado3d">
+    <div id="numeroOverlay"></div>
+  </div>
   <div id="resultados"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script>
-let scene, camera, renderer, mesh, animar = false, resultadoMostrado = 0;
-let velocidad = 0.015;
+let scene, camera, renderer, mesh;
+let animar = false;
+let resultadoMostrado = 0;
+let frameId = null;
 
 function crearGeometria(caras) {
   switch (caras) {
@@ -77,21 +93,6 @@ function crearGeometria(caras) {
   }
 }
 
-function crearTexturaNumero(numero) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#444'; // Contraste fuerte
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 160px Georgia';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(numero, canvas.width / 2, canvas.height / 2);
-  return new THREE.CanvasTexture(canvas);
-}
-
 function crearDecaedro() {
   const geom = new THREE.IcosahedronGeometry(1, 0);
   geom.scale(1, 0.65, 1);
@@ -99,18 +100,22 @@ function crearDecaedro() {
 }
 
 function crearDado(caras) {
+  if (frameId) cancelAnimationFrame(frameId);
+  if (renderer) {
+    renderer.dispose();
+    document.getElementById('dado3d').innerHTML = '<div id="numeroOverlay"></div>';
+  }
+
   const contenedor = document.getElementById('dado3d');
-  contenedor.innerHTML = '';
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
   renderer = new THREE.WebGLRenderer({ alpha: true });
   renderer.setSize(400, 400);
-  contenedor.appendChild(renderer.domElement);
+  contenedor.insertBefore(renderer.domElement, contenedor.firstChild);
 
   const geometry = crearGeometria(caras);
-  const textura = new THREE.TextureLoader().load('textura_dado_contraste.jpg');
+  const textura = new THREE.TextureLoader().load('textura_dado_oscura.jpg');
   const material = new THREE.MeshStandardMaterial({ map: textura });
-
   mesh = new THREE.Mesh(geometry, material);
   scene.add(mesh);
 
@@ -126,18 +131,12 @@ function crearDado(caras) {
 }
 
 function animate() {
-  requestAnimationFrame(animate);
+  frameId = requestAnimationFrame(animate);
   if (animar && mesh) {
-    mesh.rotation.x += velocidad;
-    mesh.rotation.y += velocidad;
+    mesh.rotation.x += 0.015;
+    mesh.rotation.y += 0.015;
   }
   renderer.render(scene, camera);
-}
-
-function mostrarNumeroEnDado() {
-  const texturaNum = crearTexturaNumero(resultadoMostrado);
-  mesh.material.map = texturaNum;
-  mesh.material.needsUpdate = true;
 }
 
 function lanzar() {
@@ -147,13 +146,18 @@ function lanzar() {
   const total = resultados.reduce((a, b) => a + b, 0);
   resultadoMostrado = cantidad === 1 ? resultados[0] : Math.max(...resultados);
 
+  document.getElementById('numeroOverlay').style.display = 'none';
   document.getElementById('resultados').innerHTML = '';
   document.getElementById('dado3d').style.display = 'block';
   crearDado(caras);
 
-  setTimeout(() => { animar = false; }, 3000);
   setTimeout(() => {
-    mostrarNumeroEnDado();
+    animar = false;
+  }, 3000);
+
+  setTimeout(() => {
+    document.getElementById('numeroOverlay').textContent = resultadoMostrado;
+    document.getElementById('numeroOverlay').style.display = 'block';
     document.getElementById('resultados').innerHTML = `
       <strong>Resultados:</strong> ${resultados.join(', ')}<br>
       <strong>Total:</strong> ${total}<br>
