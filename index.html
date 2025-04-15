@@ -27,7 +27,6 @@
       height: 400px;
       margin: 20px auto;
       display: none;
-      background-color: #f5e9d4;
     }
     select, input, button {
       font-size: 18px;
@@ -42,129 +41,77 @@
   </style>
 </head>
 <body>
-<div class="contenedor">
-  <h1>Lanzador de Dados 3D</h1>
-  <label for="caras">Número de caras del dado:</label>
-  <select id="caras">
-    <option value="4">4</option>
-    <option value="6" selected>6</option>
-    <option value="8">8</option>
-    <option value="10">10</option>
-    <option value="12">12</option>
-    <option value="20">20</option>
-  </select><br />
-  <label for="cantidad">Cantidad de dados:</label>
-  <input type="number" id="cantidad" value="1" min="1" max="50"><br />
-  <button onclick="lanzar()">Lanzar</button>
-  <div id="dado3d"></div>
-  <div id="resultados"></div>
-</div>
+  <div class="contenedor">
+    <h1>Lanzador de Dados 3D</h1>
+    <label for="caras">Número de caras del dado:</label>
+    <select id="caras">
+      <option value="4">4</option>
+      <option value="6" selected>6</option>
+      <option value="8">8</option>
+      <option value="10">10</option>
+      <option value="12">12</option>
+      <option value="20">20</option>
+    </select><br />
+    <label for="cantidad">Cantidad de dados:</label>
+    <input type="number" id="cantidad" value="1" min="1" max="50" /><br />
+    <button onclick="lanzar()">Lanzar</button>
+    <div id="dado3d"></div>
+    <div id="resultados"></div>
+  </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
-<script>
-let scene, camera, renderer, mesh, frameId = null;
-let resultadoMostrado = 0;
-let rotacion = { x: 0, y: 0 };
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+  <script>
+    let scene, camera, renderer, cube, animar = false;
 
-function crearGeometria(caras) {
-  switch (caras) {
-    case 4: return new THREE.TetrahedronGeometry(1);
-    case 6: return new THREE.BoxGeometry(1, 1, 1);
-    case 8: return new THREE.OctahedronGeometry(1);
-    case 10: return crearDecaedro();
-    case 12: return new THREE.DodecahedronGeometry(1);
-    case 20: return new THREE.IcosahedronGeometry(1);
-    default: return new THREE.BoxGeometry(1, 1, 1);
-  }
-}
+    function crearDado() {
+      const contenedor = document.getElementById('dado3d');
+      contenedor.innerHTML = '';
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(400, 400);
+      contenedor.appendChild(renderer.domElement);
 
-function crearDecaedro() {
-  const geom = new THREE.IcosahedronGeometry(1, 0);
-  geom.scale(1, 0.65, 1);
-  return geom;
-}
+      const geometry = new THREE.BoxGeometry();
+      const texture = new THREE.TextureLoader().load('fondo_pergamino.jpg');
+      const material = new THREE.MeshBasicMaterial({ map: texture });
+      cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+      camera.position.z = 3;
 
-function crearTexturaNumero(numero) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#444';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 160px Georgia';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(numero, canvas.width / 2, canvas.height / 2);
-  return new THREE.CanvasTexture(canvas);
-}
+      animar = true;
+      animate();
+    }
 
-function crearDado(caras, mostrarNumero = false) {
-  if (frameId) cancelAnimationFrame(frameId);
-  const contenedor = document.getElementById('dado3d');
-  contenedor.innerHTML = '';
+    function animate() {
+      if (!animar) return;
+      requestAnimationFrame(animate);
+      cube.rotation.x += 0.05;
+      cube.rotation.y += 0.05;
+      renderer.render(scene, camera);
+    }
 
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-  renderer = new THREE.WebGLRenderer({ alpha: true });
-  renderer.setSize(400, 400);
-  contenedor.appendChild(renderer.domElement);
+    function lanzar() {
+      const caras = parseInt(document.getElementById('caras').value);
+      const cantidad = parseInt(document.getElementById('cantidad').value);
+      const resultados = Array.from({ length: cantidad }, () => Math.floor(Math.random() * caras) + 1);
+      const total = resultados.reduce((a, b) => a + b, 0);
+      const max = Math.max(...resultados);
 
-  const geometry = crearGeometria(caras);
-  let material;
-  if (mostrarNumero) {
-    const texturaNum = crearTexturaNumero(resultadoMostrado);
-    material = new THREE.MeshStandardMaterial({ map: texturaNum });
-  } else {
-    const textura = new THREE.TextureLoader().load('textura_dado_oscura.jpg');
-    material = new THREE.MeshStandardMaterial({ map: textura });
-  }
+      document.getElementById('resultados').innerHTML = '';
+      document.getElementById('dado3d').style.display = 'block';
+      crearDado();
 
-  mesh = new THREE.Mesh(geometry, material);
-  mesh.rotation.set(0, 0, 0);
-  scene.add(mesh);
-
-  const ambient = new THREE.AmbientLight(0xffffff, 0.8);
-  scene.add(ambient);
-  const light = new THREE.DirectionalLight(0xffffff, 0.6);
-  light.position.set(5, 5, 5);
-  scene.add(light);
-
-  camera.position.z = 3;
-}
-
-function animar() {
-  if (mesh) {
-    mesh.rotation.x += 0.015;
-    mesh.rotation.y += 0.015;
-    frameId = requestAnimationFrame(animar);
-    renderer.render(scene, camera);
-  }
-}
-
-function lanzar() {
-  const caras = parseInt(document.getElementById('caras').value);
-  const cantidad = parseInt(document.getElementById('cantidad').value);
-  const resultados = Array.from({ length: cantidad }, () => Math.floor(Math.random() * caras) + 1);
-  const total = resultados.reduce((a, b) => a + b, 0);
-  resultadoMostrado = cantidad === 1 ? resultados[0] : Math.max(...resultados);
-
-  document.getElementById('resultados').innerHTML = '';
-  document.getElementById('dado3d').style.display = 'block';
-  crearDado(caras, false);
-  animar();
-
-  setTimeout(() => {
-    if (frameId) cancelAnimationFrame(frameId);
-    crearDado(caras, true);
-    renderer.render(scene, camera);
-    document.getElementById('resultados').innerHTML = `
-      <strong>Resultados:</strong> ${resultados.join(', ')}<br>
-      <strong>Total:</strong> ${total}<br>
-      <strong>Mostrado en el dado 3D:</strong> ${resultadoMostrado}
-    `;
-  }, 3000);
-}
-</script>
+      setTimeout(() => {
+        animar = false;
+        document.getElementById('dado3d').style.display = 'none';
+        document.getElementById('resultados').innerHTML = `
+          <strong>Resultados:</strong> ${resultados.join(', ')}<br>
+          <strong>Total:</strong> ${total}<br>
+          <strong>Mostrado en el dado 3D:</strong> ${cantidad === 1 ? resultados[0] : max}
+        `;
+      }, 3000);
+    }
+  </script>
 </body>
 </html>
